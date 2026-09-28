@@ -1,0 +1,23 @@
+#!/bin/sh
+# Root half of power-profile-menu. Install root-owned, outside $HOME:
+#   sudo install -m 755 -o root -g root power-profile-helper /usr/local/bin/power-profile
+# and let the menu run it without a password:
+#   echo "$USER ALL=(root) NOPASSWD: /usr/local/bin/power-profile" | sudo tee /etc/sudoers.d/power-profile
+#   sudo chmod 440 /etc/sudoers.d/power-profile
+#
+# This CPU has no HWP or ACPI platform profile, so power-profiles-daemon would
+# only run its placeholder driver; the real knobs are the governor and turbo.
+
+case $1 in
+    power-saver) gov=powersave   turbo_off=1 ;;
+    balanced)    gov=schedutil   turbo_off=0 ;;
+    performance) gov=performance turbo_off=0 ;;
+    *) echo "usage: power-profile power-saver|balanced|performance" >&2; exit 2 ;;
+esac
+
+for g in /sys/devices/system/cpu/cpu[0-9]*/cpufreq/scaling_governor; do
+    echo "$gov" > "$g" || exit 1
+done
+nt=/sys/devices/system/cpu/intel_pstate/no_turbo
+[ -w "$nt" ] && echo "$turbo_off" > "$nt"
+exit 0

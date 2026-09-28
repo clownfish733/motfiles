@@ -1,0 +1,21 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Firefox (Other)
+GenericName=Web Browser
+Comment=Second, independent Firefox instance with its own profile
+Exec=env MOZ_APP_REMOTINGNAME=firefox-clone /usr/lib/firefox/firefox -P firefox-clone %u
+Icon=firefox
+Terminal=false
+StartupNotify=true
+StartupWMClass=firefox-clone
+Categories=Network;WebBrowser;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=env MOZ_APP_REMOTINGNAME=firefox-clone /usr/lib/firefox/firefox -P firefox-clone --new-window
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=env MOZ_APP_REMOTINGNAME=firefox-clone /usr/lib/firefox/firefox -P firefox-clone --private-window

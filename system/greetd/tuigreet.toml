@@ -1,0 +1,33 @@
+# tuigreet on the Linux virtual console.
+#
+# Install to /etc/tuigreet/config.toml.
+#
+# The console has no truecolour: it reduces a 24-bit escape to one of sixteen
+# palette slots by thresholding each channel, which collapses #993954,
+# #c74e6f and #57444a onto the same magenta and flattens the bevel. So this
+# file names ANSI colours instead, and greetd/vtrgb repoints those
+# sixteen slots at the desktop palette. Slot numbers are in the comments.
+#
+# Under a terminal emulator with truecolour the built-in defaults are already
+# these colours as hex, and this file is unnecessary.
+
+[theme]
+container   = "black"           #  0  #000000  ground
+border      = "magenta"         #  5  #993954  outline
+bevel_light = "lightmagenta"    # 13  #c74e6f  lit edge
+bevel_dark  = "darkgray"        #  8  #57444a  shaded edge
+shadow      = "black"           #  0  only visible over a background animation
+
+title       = "lightred"        #  9  #d44a6e  accent
+text        = "white"           # 15  #e6dde0  fg
+greet       = "white"           # 15
+input       = "white"           # 15
+time        = "gray"            #  7  #8b7076  fgDim
+prompt      = "gray"            #  7
+action      = "gray"            #  7
+button      = "magenta"         #  5  status-key pill background
+selection   = "magenta"         #  5  selected menu row
+
+bevel   = "raised"
+# Plain corners: no console font carries the rounded ones at U+256D-256F.
+borders = "plain"

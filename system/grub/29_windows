@@ -1,0 +1,8 @@
+#!/bin/sh
+exec tail -n +3 $0
+menuentry 'Windows' --class windows --class os $menuentry_id_option 'osprober-efi-F464-947D' {
+	insmod part_gpt
+	insmod fat
+	search --no-floppy --fs-uuid --set=root F464-947D
+	chainloader /EFI/Microsoft/Boot/bootmgfw.efi
+}

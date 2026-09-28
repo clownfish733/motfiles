@@ -1,0 +1,21 @@
+[Desktop Entry]
+Version=1.0
+Type=Application
+Name=Firefox (Basic)
+GenericName=Web Browser
+Comment=Stock Firefox: its own profile, no user.js, styles or extensions
+Exec=env MOZ_APP_REMOTINGNAME=firefox-basic /usr/lib/firefox/firefox -P firefox-basic %u
+Icon=firefox
+Terminal=false
+StartupNotify=true
+StartupWMClass=firefox-basic
+Categories=Network;WebBrowser;
+Actions=new-window;new-private-window;
+
+[Desktop Action new-window]
+Name=Open a New Window
+Exec=env MOZ_APP_REMOTINGNAME=firefox-basic /usr/lib/firefox/firefox -P firefox-basic --new-window
+
+[Desktop Action new-private-window]
+Name=Open a New Private Window
+Exec=env MOZ_APP_REMOTINGNAME=firefox-basic /usr/lib/firefox/firefox -P firefox-basic --private-window

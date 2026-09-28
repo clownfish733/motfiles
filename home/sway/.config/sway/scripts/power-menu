@@ -1,0 +1,10 @@
+#!/bin/sh
+# Power menu (stands in for quicky's power menu).
+choice=$(printf 'lock\nsuspend\nlogout\nreboot\nshutdown\n' | tofi --prompt-text 'power: ')
+case "$choice" in
+    lock) loginctl lock-session ;;
+    suspend) systemctl suspend ;;
+    logout) swaymsg exit ;;
+    reboot) systemctl reboot ;;
+    shutdown) systemctl poweroff ;;
+esac

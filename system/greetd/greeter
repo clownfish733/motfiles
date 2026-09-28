@@ -1,0 +1,21 @@
+#!/bin/sh
+# greetd greeter wrapper.
+#
+# Repoints the console's sixteen palette slots at the desktop palette before
+# handing over to tuigreet. This has to happen here rather than in a boot-time
+# unit: the palette is per-VT and only survives on the console greetd actually
+# opens, and the ioctl behind it (PIO_CMAP) is permitted because the greeter
+# user owns that VT for the duration.
+#
+# The console *font* cannot be set from here — KDFONTOP wants
+# CAP_SYS_TTY_CONFIG — so it is set at boot through /etc/vconsole.conf.
+#
+# Every step is best-effort: a greeter that fails to start is a machine you
+# cannot log into, so nothing here is allowed to be fatal.
+
+setvtrgb /etc/greetd/vtrgb 2>/dev/null || true
+
+# Absolute path on purpose: the packaged greetd-tuigreet is still installed at
+# /usr/bin/tuigreet, and whichever of the two PATH finds first is not a thing
+# to leave to chance.
+exec /usr/local/bin/tuigreet --time --remember --cmd sway-session

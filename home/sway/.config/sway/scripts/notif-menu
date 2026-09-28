@@ -1,0 +1,82 @@
+#!/usr/bin/env bash
+# Notification menu in the tofi minibuffer (stands in for quicky's
+# notification menu), on top of mako.
+#
+# Lists what is on screen, then the history. Enter on a live notification
+# offers its actions (and dismiss); Enter on an old one does nothing. The
+# commands at the end dismiss everything, bring back the last one, or toggle
+# do not disturb. The bar shows "dnd" while it is on.
+
+dnd_flag=${XDG_RUNTIME_DIR:-/run/user/$UID}/dnd
+
+menu() { tofi --prompt-text "$1" --require-match=true; }
+bar()  { pkill -USR1 -f 'bash .*sway/scripts/status$'; }
+
+# makoctl list/history print "Notification <id>: <summary>", then indented
+# "App name: ...", and for live ones an "Actions:" block of "key: label".
+declare -A id_of=() actions_of=()
+parse() {  # parse <array name> <tag> <makoctl output>
+    local -n out=$1
+    local tag=$2 id= summary= app= line in_actions=
+    while IFS= read -r line; do
+        if [[ $line =~ ^Notification\ ([0-9]+):\ (.*)$ ]]; then
+            [[ -n $id ]] && add
+            id=${BASH_REMATCH[1]} summary=${BASH_REMATCH[2]} app= in_actions=
+        elif [[ $line =~ ^\ \ App\ name:\ (.*)$ ]]; then
+            app=${BASH_REMATCH[1]}
+        elif [[ $line == '  Actions:' ]]; then
+            in_actions=1
+        elif [[ -n $in_actions && $line =~ ^\ \ \ \ ([^:]+):\ (.*)$ ]]; then
+            actions_of[$id]+="${BASH_REMATCH[2]}"$'\t'"${BASH_REMATCH[1]}"$'\n'
+        else
+            in_actions=
+        fi
+    done <<< "$3"
+    [[ -n $id ]] && add
+}
+add() {
+    local e="${app:+$app: }$summary$tag"
+    [[ -n ${id_of[$e]} ]] && e+=" #$id"
+    id_of[$e]=$id
+    out+=("$e")
+}
+
+live=() old=()
+parse live '' "$(makoctl list)"
+live_ids=" ${id_of[*]} "
+parse old ' (old)' "$(makoctl history)"
+
+cmds=()
+(( ${#live[@]} )) && cmds+=('dismiss all')
+(( ${#old[@]} )) && cmds+=('restore last')
+if [[ $(makoctl mode) == *do-not-disturb* ]]; then cmds+=('notifications on')
+else cmds+=('do not disturb'); fi
+
+prompt='notifications: '
+(( ${#live[@]} + ${#old[@]} )) || prompt='notifications (none): '
+
+choice=$(printf '%s\n' "${live[@]}" "${old[@]}" "${cmds[@]}" | menu "$prompt") || exit
+case $choice in
+    'dismiss all')      makoctl dismiss -a; exit ;;
+    'restore last')     makoctl restore; exit ;;
+    'do not disturb')   makoctl mode -a do-not-disturb >/dev/null; : > "$dnd_flag"; bar; exit ;;
+    'notifications on') makoctl mode -r do-not-disturb >/dev/null; rm -f "$dnd_flag"; bar; exit ;;
+esac
+
+id=${id_of[$choice]}
+[[ -n $id && $live_ids == *" $id "* ]] || exit
+
+# Its actions by label, then dismiss.
+declare -A key_of=()
+labels=()
+while IFS=$'\t' read -r label key; do
+    [[ -n $key ]] || continue
+    key_of[$label]=$key; labels+=("$label")
+done <<< "${actions_of[$id]}"
+
+action=$(printf '%s\n' "${labels[@]}" dismiss | menu 'action: ') || exit
+if [[ $action == dismiss ]]; then
+    makoctl dismiss -n "$id"
+else
+    makoctl invoke -n "$id" "${key_of[$action]}"
+fi

@@ -1,0 +1,5 @@
+#!/bin/sh
+# Keeps sway's startup/shutdown logging off the VT the greeter handed over,
+# in a log file rather than /dev/null so a failed startup leaves something to
+# read.
+exec sway >"${XDG_RUNTIME_DIR:-/tmp}/sway-session.log" 2>&1

@@ -1,0 +1,27 @@
+[Desktop Entry]
+Version=1.0
+Name=Waterfox
+Comment=Browse the World Wide Web
+GenericName=Web Browser
+Keywords=Internet;WWW;Browser;Web;Explorer;
+Exec=sh -c 'exec "$HOME/.local/bin/waterfox-wrapper" "$@"' sh %u
+Terminal=false
+Type=Application
+Icon=waterfox
+Categories=Network;WebBrowser;
+MimeType=text/html;text/xml;application/xhtml+xml;application/xml;application/rss+xml;application/rdf+xml;image/gif;image/jpeg;image/png;x-scheme-handler/http;x-scheme-handler/https;x-scheme-handler/ftp;x-scheme-handler/chrome;video/webm;application/x-xpinstall;
+StartupNotify=true
+StartupWMClass=waterfox-default
+Actions=NewWindow;NewPrivateWindow;ProfileManagerWindow;
+
+[Desktop Action NewWindow]
+Name=Open a New Window
+Exec=sh -c 'exec "$HOME/.local/bin/waterfox-wrapper" --new-window'
+
+[Desktop Action NewPrivateWindow]
+Name=Open a New Private Window
+Exec=sh -c 'exec "$HOME/.local/bin/waterfox-wrapper" --private-window'
+
+[Desktop Action ProfileManagerWindow]
+Name=Open the Profile Manager
+Exec=sh -c 'exec "$HOME/.local/bin/waterfox-wrapper" --ProfileManager'

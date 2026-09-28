@@ -1,0 +1,5 @@
+# ~/.config/latexmk/latexmkrc
+# Keep the PDF and .synctex.gz next to the source (vimtex expects them there),
+# but shove the aux/log/fls/fdb_latexmk clutter into build/ per project.
+$out_dir = '.';
+$aux_dir = 'build';

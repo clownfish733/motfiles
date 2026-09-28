@@ -1,0 +1,120 @@
+#!/usr/bin/env bash
+# Symlinks user.js, chrome/userChrome.css and chrome/userContent.css into each
+# Firefox profile named in profiles.txt, and installs the add-ons in
+# extensions.txt into them. Re-runnable -- run it again after making a new
+# profile, or after Firefox has been started for the first time on a fresh
+# install (default-release does not exist until then).
+#
+#   firefox-profile-setup                   links + extensions
+#   firefox-profile-setup --no-extensions   links only
+set -euo pipefail
+
+conf="${FIREFOX_PROFILE_DIR:-$HOME/.config/firefox-profile}"
+list="$conf/profiles.txt"
+exts="$conf/extensions.txt"
+
+install_exts=true
+case "${1:-}" in
+    --no-extensions) install_exts=false ;;
+    "") ;;
+    *) echo "usage: ${0##*/} [--no-extensions]" >&2; exit 1 ;;
+esac
+
+# Firefox 153+ keeps profiles under XDG dirs; older builds used ~/.mozilla.
+root="$HOME/.config/mozilla/firefox"
+[[ -f "$root/profiles.ini" ]] || root="$HOME/.mozilla/firefox"
+ini="$root/profiles.ini"
+
+for f in "$list" "$exts" "$conf/user.js" "$conf/userChrome.css" "$conf/userContent.css"; do
+    [[ -f "$f" ]] || { echo "missing: $f" >&2; exit 1; }
+done
+[[ -f "$ini" ]] || { echo "no profiles.ini under $root" >&2; exit 1; }
+
+# profiles.ini maps a profile Name to a Path that is usually salted
+# ("216g1vpt.default-release"), so the directory has to be looked up by name.
+# Keys can appear in any order within a section, hence the deferred emit.
+profile_path() {
+    awk -v want="$1" -v root="$root" '
+        function emit() {
+            if (done || name != want || path == "") return
+            print (rel == "0" ? path : root "/" path)
+            done = 1
+        }
+        /^\[/          { emit(); name = ""; path = ""; rel = "1"; next }
+        /^Name=/       { name = substr($0, 6) }
+        /^Path=/       { path = substr($0, 6) }
+        /^IsRelative=/ { rel  = substr($0, 12) }
+        END            { emit() }
+    ' "$ini"
+}
+
+# Point dest at src, preserving anything already there that is not one of ours.
+link() {
+    local src=$1 dest=$2 backup
+    if [[ -e "$dest" && ! -L "$dest" ]]; then
+        backup="$dest.bak"
+        [[ -e "$backup" ]] && backup="$dest.$(date +%Y%m%d%H%M%S).bak"
+        mv "$dest" "$backup"
+        echo "  kept old:  ${backup##*/}"
+    fi
+    mkdir -p "${dest%/*}"
+    ln -sfT "$src" "$dest"
+    echo "  linked:    ${dest#"$root"/}"
+}
+
+# Each add-on is fetched at most once per run, then copied into every profile.
+cache=$(mktemp -d)
+trap 'rm -rf "$cache"' EXIT
+
+fetch() {
+    local id=$1 slug=$2
+    [[ -s "$cache/$id.xpi" ]] && return
+    curl -fsSL --retry 2 -o "$cache/$id.xpi" \
+        "https://addons.mozilla.org/firefox/downloads/latest/$slug/latest.xpi"
+}
+
+# Sideload into <profile>/extensions/<id>.xpi. Firefox picks it up on the next
+# start; user.js sets extensions.autoDisableScopes so it comes up enabled
+# instead of behind a prompt. Anything already installed (by hand or by an
+# earlier run) is left alone -- Firefox updates add-ons itself from then on.
+install_extensions() {
+    local path=$1 id slug
+    while read -r id slug _; do
+        [[ -z "$id" || "$id" == \#* ]] && continue
+        if [[ -e "$path/extensions/$id.xpi" ]] ||
+            grep -qsF "\"id\":\"$id\"" "$path/extensions.json"; then
+            continue
+        fi
+        if ! fetch "$id" "$slug"; then
+            echo "  failed:    $slug (download)" >&2
+            continue
+        fi
+        install -Dm644 "$cache/$id.xpi" "$path/extensions/$id.xpi"
+        echo "  add-on:    $slug"
+    done < "$exts"
+}
+
+missing=false
+while IFS= read -r profile || [[ -n "$profile" ]]; do
+    [[ -z "${profile// }" || "$profile" == \#* ]] && continue
+
+    path=$(profile_path "$profile")
+    if [[ -z "$path" || ! -d "$path" ]]; then
+        echo "skipped '$profile': not in $ini" >&2
+        missing=true
+        continue
+    fi
+
+    echo "$profile"
+    link "$conf/user.js" "$path/user.js"
+    link "$conf/userChrome.css" "$path/chrome/userChrome.css"
+    link "$conf/userContent.css" "$path/chrome/userContent.css"
+    [[ "$install_exts" == true ]] && install_extensions "$path"
+done < "$list"
+
+# Not an error: default-release only appears once Firefox has run once.
+if [[ "$missing" == true ]]; then
+    echo "start Firefox on the missing profile, then run ${0##*/} again" >&2
+fi
+
+echo "restart Firefox fully -- the stylesheets and new add-ons are only read at startup"

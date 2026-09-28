@@ -1,0 +1,11 @@
+# User-wide clang-format defaults. clang-format walks up from the file being
+# formatted, so this applies to anything under $HOME that isn't inside a project
+# with its own .clang-format (those still win). clangd picks it up too, which is
+# what nvim's <leader>f / format-on-save ends up calling for C/C++.
+BasedOnStyle: LLVM
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+ContinuationIndentWidth: 4
+# LLVM's -2 assumes a 2-space indent; scale it so `public:` lines up with `class`
+AccessModifierOffset: -4

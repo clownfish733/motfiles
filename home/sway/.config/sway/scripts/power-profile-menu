@@ -1,0 +1,31 @@
+#!/usr/bin/env bash
+# Power profile menu in the tofi minibuffer (stands in for quicky's power
+# profile menu). The switching itself is done as root by
+# /usr/local/bin/power-profile; see power-profile-helper for how to install it.
+
+helper=/usr/local/bin/power-profile
+cpu=/sys/devices/system/cpu
+
+say() { printf 'ok\n' | tofi --prompt-text "power profile: $1  " >/dev/null; }
+
+read -r gov < "$cpu/cpu0/cpufreq/scaling_governor"
+nt=0; [[ -r $cpu/intel_pstate/no_turbo ]] && read -r nt < "$cpu/intel_pstate/no_turbo"
+case $gov:$nt in
+    powersave:1)   current=power-saver ;;
+    schedutil:0)   current=balanced ;;
+    performance:0) current=performance ;;
+    *)             current= ;;
+esac
+
+entries=()
+for p in power-saver balanced performance; do
+    [[ $p == "$current" ]] && entries=("$p (current)" "${entries[@]}") || entries+=("$p")
+done
+
+choice=$(printf '%s\n' "${entries[@]}" | tofi --prompt-text 'power profile: ' --require-match=true) || exit
+choice=${choice% (current)}
+[[ $choice == "$current" ]] && exit
+
+if ! sudo -n "$helper" "$choice" 2>/dev/null; then
+    say "could not switch; is $helper installed with its sudoers rule?"
+fi

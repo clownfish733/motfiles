@@ -1,0 +1,97 @@
+#!/usr/bin/env bash
+# Wifi menu in the tofi minibuffer (stands in for quicky's wifi menu).
+#
+# Enter on a network connects to it, asking for a password only when
+# NetworkManager has none saved. Everything else is a command at the end of
+# the list: rescan, disconnect, forget, radio on/off, and nmtui for anything
+# this doesn't cover (802.1X / eduroam, static IPs, ...).
+
+term=foot
+
+menu() { tofi --prompt-text "$1" --require-match=true; }
+say()  { printf 'ok\n' | tofi --prompt-text "wifi: $1  " >/dev/null; }
+bar()  { pkill -USR2 -f 'bash .*sway/scripts/status$'; }
+
+# nmcli's terse output escapes ':' and '\' inside fields.
+unesc() { local s=${1//\\:/:}; printf '%s' "${s//\\\\/\\}"; }
+
+if [[ $(nmcli radio wifi) != enabled ]]; then
+    [[ $(printf 'radio on\nnmtui\n' | menu 'wifi (off): ') == 'radio on' ]] || exit
+    nmcli radio wifi on && bar
+    exit
+fi
+
+rescan=no
+while :; do
+    # Saved profiles, by name; NetworkManager names them after the SSID.
+    declare -A saved=()
+    while IFS=: read -r name type; do
+        [[ $type == 802-11-wireless ]] && saved[$(unesc "$name")]=1
+    done < <(nmcli -t -e yes -f NAME,TYPE con show)
+
+    # One line per SSID, strongest first, the active one on top.
+    declare -A ssid_of=() seen=() secure=()
+    lines=() active=
+    while IFS= read -r l; do
+        inuse=${l%%:*}; l=${l#*:}
+        signal=${l%%:*}; l=${l#*:}
+        sec=${l%%:*}; ssid=$(unesc "${l#*:}")
+        [[ -z $ssid || -n ${seen[$ssid]} ]] && continue
+        seen[$ssid]=1
+
+        tag=
+        if [[ $inuse == '*' ]]; then tag=' (connected)'; active=$ssid
+        elif [[ -n ${saved[$ssid]} ]]; then tag=' (saved)'
+        elif [[ -z $sec ]]; then tag=' (open)'
+        fi
+        [[ $sec == *802.1X* ]] && tag+=' (802.1x)'
+        entry="$ssid $signal%$tag"
+        ssid_of[$entry]=$ssid
+        secure[$ssid]=$sec
+        [[ $inuse == '*' ]] && lines=("$entry" "${lines[@]}") || lines+=("$entry")
+    done < <(nmcli -t -e yes -f IN-USE,SIGNAL,SECURITY,SSID dev wifi list --rescan "$rescan" \
+             | sort -t: -k2,2nr)
+
+    cmds=(rescan)
+    [[ -n $active ]] && cmds+=(disconnect)
+    (( ${#saved[@]} )) && cmds+=(forget)
+    cmds+=('radio off' nmtui)
+
+    choice=$(printf '%s\n' "${lines[@]}" "${cmds[@]}" | menu 'wifi: ') || exit
+    case $choice in
+        rescan)      rescan=yes; continue ;;
+        disconnect)  nmcli con down id "$active" >/dev/null; bar; exit ;;
+        'radio off') nmcli radio wifi off; bar; exit ;;
+        nmtui)       exec $term --app-id=floating-menu nmtui ;;
+        forget)
+            name=$(printf '%s\n' "${!saved[@]}" | sort | menu 'forget: ') || exit
+            nmcli con delete id "$name" >/dev/null || say "could not forget $name"
+            bar; exit ;;
+    esac
+
+    ssid=${ssid_of[$choice]}
+    [[ -z $ssid || $ssid == "$active" ]] && exit
+    if [[ ${secure[$ssid]} == *802.1X* && -z ${saved[$ssid]} ]]; then
+        say "$ssid needs 802.1x, set it up in nmtui"; exit
+    fi
+
+    # Try without a password first: that picks up a saved profile, and an open
+    # network needs nothing else.
+    if out=$(nmcli dev wifi connect "$ssid" 2>&1); then bar; exit; fi
+    if [[ -z ${secure[$ssid]} || $out != *[Ss]ecrets* ]]; then
+        say "${out#Error: }"; exit
+    fi
+
+    pw=$(tofi --prompt-text "password for $ssid: " --require-match=false \
+              --hide-input=true </dev/null) || exit
+    [[ -z $pw ]] && exit
+    # A failed attempt leaves a profile with the wrong key behind; drop it so
+    # the next try asks again instead of reusing it.
+    if out=$(nmcli dev wifi connect "$ssid" password "$pw" 2>&1); then
+        bar
+    else
+        [[ -z ${saved[$ssid]} ]] && nmcli con delete id "$ssid" >/dev/null 2>&1
+        say "${out#Error: }"
+    fi
+    exit
+done

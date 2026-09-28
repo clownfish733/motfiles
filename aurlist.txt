@@ -1,0 +1,5 @@
+carapace-bin
+claude-code
+tofi
+ghcup-hs-bin
+verible-bin

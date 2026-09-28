@@ -1,0 +1,9 @@
+#!/bin/sh
+# Launches Waterfox and cleans up the empty ~/Waterfox folder it creates on
+# every startup (known upstream bug, see BrowserWorks/waterfox commit 25fd6c8
+# reverting XDG basedir support).
+rmdir "$HOME/Waterfox" 2>/dev/null
+
+/usr/bin/waterfox-g "$@" &
+
+(sleep 5; rmdir "$HOME/Waterfox" 2>/dev/null) &

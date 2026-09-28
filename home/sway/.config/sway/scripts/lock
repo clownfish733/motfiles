@@ -1,0 +1,8 @@
+#!/bin/sh
+# Lock with gtklock over whatever awww is showing (first output's image).
+# --daemonize returns only once the session is locked, which swayidle -w
+# relies on before sleep.
+set --
+bg=$(awww query 2>/dev/null | sed -n 's/.*currently displaying: image: //p' | head -n 1)
+[ -f "$bg" ] && set -- --background "$bg"
+exec gtklock --daemonize "$@"

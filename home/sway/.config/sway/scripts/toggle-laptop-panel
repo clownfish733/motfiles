@@ -1,0 +1,8 @@
+#!/bin/sh
+# Never black the machine out: only toggle the laptop panel when an external
+# output is connected.
+if [ "$(swaymsg -t get_outputs | grep -c '"name"')" -gt 1 ]; then
+    swaymsg output eDP-1 toggle
+else
+    swaynag -t warning -m 'No external monitor connected'
+fi

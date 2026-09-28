@@ -1,0 +1,23 @@
+#compdef newtex
+
+# Completes template names straight from ~/.config/tex/templates, so a newly
+# added .tex shows up here with no registration step.
+
+local -a templates
+templates=(${HOME}/.config/tex/templates/*.tex(N:t:r))
+
+case ${words[2]} in
+  -l|--list) return 0 ;;
+  -s|--save)
+    _arguments \
+      '2:new template name:()' \
+      '3:source file:_files -g "*.tex"'
+    return
+    ;;
+esac
+
+_arguments \
+  '(-)'{-l,--list}'[list available templates]' \
+  '(-)'{-s,--save}'[save a file as a new template]' \
+  '1:directory:_directories' \
+  "2:template:(${templates})"

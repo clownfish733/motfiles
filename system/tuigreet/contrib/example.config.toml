@@ -1,0 +1,201 @@
+# tuigreet Configuration File
+# This is the main configuration file for tuigreet
+# Configuration files are loaded in order:
+# 1. /etc/tuigreet/config.toml (system-wide)
+# 2. ~/.config/tuigreet/config.toml (user-specific)
+# 3. CLI arguments (highest priority)
+
+[general]
+# Enable debug logging
+debug = false
+
+# Log file path
+log_file = "/tmp/tuigreet.log"
+
+# Enable numlock on startup
+numlock = false
+
+[session]
+# Override session with a specific command
+# command = "sway"
+
+# Directories containing Wayland session files
+sessions_dirs = ["/usr/share/wayland-sessions"]
+
+# Directories containing X11 session files
+xsessions_dirs = ["/usr/share/xsessions"]
+
+# Wrapper command for non-X11 sessions
+# session_wrapper = "exec"
+
+# Wrapper command for X11 sessions
+# xsession_wrapper = "startx /usr/bin/env"
+
+# Environment variables for default session
+# environments = ["XDG_CURRENT_DESKTOP=sway", "XDG_SESSION_TYPE=wayland"]
+
+[display]
+# Show current time
+show_time = false
+
+# Custom time format (strftime)
+# time_format = "%Y-%m-%d %H:%M:%S"
+
+# Custom greeting message
+# greeting = "Welcome to the system"
+
+# Show login form title
+show_title = false
+
+# Show /etc/issue file (mutually exclusive with greeting)
+issue = false
+
+# Greeting text alignment: left, center, right
+align_greeting = "center"
+
+[remember]
+# Remember last logged-in username
+username = false
+
+# Remember last selected session (global)
+session = false
+
+# Remember last selected session per user
+user_session = false
+
+[user_menu]
+# Enable user selection menu
+enabled = false
+
+# Minimum UID to display in user menu
+min_uid = 1000
+
+# Maximum UID to display in user menu
+max_uid = 60000
+
+[secret]
+# How to display secrets: "hidden" or "characters"
+mode = "hidden"
+
+# Characters to use when mode is "characters"
+characters = "*"
+
+[layout]
+# Width of the main prompt container
+width = 80
+
+# Padding around the terminal window
+window_padding = 0
+
+# Padding inside the main container
+container_padding = 1
+
+# Padding between prompt rows
+prompt_padding = 1
+
+# Widget positioning
+[layout.widgets]
+# Position of time widget: "default", "top", "bottom", "hidden"
+time_position = "default"
+
+# Position of status bar widget: "default", "top", "bottom", "hidden"
+status_position = "default"
+
+# Status bar item visibility
+[layout.widgets.status_bar]
+# Show the ESC/Reset button
+show_reset = true
+# Show the command button (F2)
+show_command = true
+# Show the session button (F3)
+show_session = true
+# Show the power button (F12)
+show_power = true
+# Show the background button (F4)
+show_background = true
+# Show the current session/command indicator
+show_session_status = true
+# Show the caps lock indicator
+show_caps_lock = true
+
+[power]
+# Custom shutdown command
+# shutdown = "sudo systemctl poweroff"
+
+# Custom reboot command
+# reboot = "sudo systemctl reboot"
+
+# Custom suspend command (default: "loginctl suspend")
+# suspend = "loginctl suspend"
+
+# Custom hibernate command (default: "loginctl hibernate")
+# hibernate = "loginctl hibernate"
+
+# Use setsid to detach power commands
+use_setsid = true
+
+[keybindings]
+# F-key for command menu (1-12)
+command = 2
+
+# F-key for sessions menu (1-12)
+sessions = 3
+
+# F-key for power menu (1-12)
+power = 12
+
+[theme]
+# All fields are optional. Anything left out keeps the stock palette from
+# crates/tuigreet-theme/src/palette.rs, which matches the quickshell bar.
+# Valid color names: black, red, green, yellow, blue, magenta, cyan, white
+# Or hex colors: "#ff0000", RGB: "255,0,0"
+
+# Border color
+# border = "white"
+
+# Base text color
+# text = "white"
+
+# Time display color
+# time = "cyan"
+
+# Container background color
+# container = "black"
+
+# Container title color
+# title = "yellow"
+
+# Greeting text color
+# greet = "green"
+
+# Prompt text color
+# prompt = "blue"
+
+# User input color
+# input = "white"
+
+# Action text color
+# action = "magenta"
+
+# Action button color
+# button = "red"
+
+# Selected menu row / active status key background
+# selection = "red"
+
+# Container edge shading. The light source sits off the top-left, so a raised
+# panel is lit along its top and left edges and shaded along the other two.
+# One of "raised", "sunken", "none".
+# bevel = "raised"
+
+# The two bevel tints. Left out, they are derived from `border` by turning it
+# up towards the light and down into shade.
+# bevel_light = "#c74e6f"
+# bevel_dark = "#4d1c2a"
+
+# Drop shadow cast under containers, or "none" to turn it off. Only shows over
+# a background animation or image; against a black ground it is invisible.
+# shadow = "#0a0708"
+
+# Border glyphs: "rounded", "plain", "thick" or "double".
+# borders = "rounded"

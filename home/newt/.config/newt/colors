@@ -1,0 +1,24 @@
+# ~/.config/newt/colors
+root=,black
+border=white,black
+window=,black
+shadow=,black
+title=brightblue,black
+button=black,brightblue
+actbutton=black,white
+checkbox=white,black
+actcheckbox=black,white
+entry=white,black
+disentry=gray,black
+label=brightblue,black
+listbox=white,black
+actlistbox=black,white
+sellistbox=brightblue,black
+actsellistbox=black,brightblue
+textbox=white,black
+acttextbox=black,white
+helpline=white,black
+roottext=gray,black
+emptyscale=,gray
+fullscale=,brightblue
+compactbutton=white,black

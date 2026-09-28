@@ -1,0 +1,37 @@
+#!/usr/bin/env bash
+# Run a shell command from the tofi minibuffer (stands in for Emacs M-! /
+# compile). The command runs in a foot window that stays open with the exit
+# status until you press Enter, so its output can be read.
+#
+#   run-cmd [dir]          prompt for a command, run it in dir (default ~)
+#   run-cmd --again        rerun the last command in its folder (recompile)
+#
+# The command goes to $SHELL (nu here), so type what you would in a terminal.
+
+term=foot
+last=${XDG_STATE_HOME:-$HOME/.local/state}/run-cmd-last
+
+say() { printf 'ok\n' | tofi --prompt-text "run: $1  " >/dev/null; }
+short() { [[ $1 == "$HOME"* ]] && printf '~%s' "${1#"$HOME"}" || printf '%s' "$1"; }
+
+if [[ $1 == --again ]]; then
+    [[ -r $last ]] || { say 'nothing run yet'; exit; }
+    { read -r dir; IFS= read -r cmd; } < "$last"
+    [[ -d $dir ]] || dir=$HOME
+else
+    dir=${1:-$HOME}
+    # No list to pick from: with results on screen tofi would take the
+    # highlighted one over what was typed.
+    cmd=$(tofi --prompt-text "run in $(short "$dir"): " --require-match=false </dev/null) || exit
+    [[ -z $cmd ]] && exit
+    mkdir -p -- "${last%/*}"
+    printf '%s\n%s\n' "$dir" "$cmd" > "$last"
+fi
+
+exec $term --working-directory="$dir" --title="run: $cmd" bash -c '
+    printf "\e[2m%s\$ %s\e[0m\n" "$2" "$1"
+    "${SHELL:-bash}" -c "$1"
+    s=$?
+    printf "\n\e[2m[exit %d]  enter to close\e[0m" "$s"
+    read -r
+' run-cmd "$cmd" "$(short "$dir")"

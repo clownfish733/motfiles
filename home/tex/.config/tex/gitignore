@@ -1,0 +1,5 @@
+# LaTeX build artifacts. aux/log/toc/bbl/etc. all land in build/ per
+# ~/.config/latexmk/latexmkrc; only the synctex file stays in the root
+# (vimtex wants it next to the PDF) so it's ignored separately here.
+build/
+*.synctex.gz

@@ -1,0 +1,217 @@
+#!/usr/bin/env bash
+# vids-dl — yt-dlp, detached from the picker that asked for it.
+#
+# The picker starts this with setsid and forgets it. Progress goes into a
+# one-line job file that any later picker can read, and the end of the job is
+# announced with a desktop notification, so a download outlives the window it
+# was started from and still tells you when it lands.
+#
+#   vids-dl add URL [yt-dlp args...]
+#   vids-dl cancel
+#
+# Every yt-dlp flag comes from the caller — Config.qml is still the one place
+# that decides how a download runs. This script only adds the progress
+# contract it has to parse, and the reporting the picker cannot do once it has
+# exited.
+
+set -uo pipefail
+shopt -s extglob   # for the whitespace trims below
+
+STATE="${XDG_STATE_HOME:-$HOME/.local/state}/vids"
+JOBS="$STATE/jobs"
+LOCK="$STATE/queue.lock"
+
+SEP=$'\037'   # unit separator: cannot occur in a filename or a video title
+MARK=$'\001'  # marks our own lines in yt-dlp's stdout
+
+mkdir -p "$JOBS" || exit 1
+
+# ── the job file ────────────────────────────────────────────────────────────
+JOB=""
+PGID=$$
+J_status=queued
+J_url=""
+J_title=""
+J_percent=""
+J_speed=""
+J_eta=""
+J_index=""
+J_total=""
+J_phase=""
+J_error=""
+
+# One line of key=value fields. Written to a temp file and moved into place so
+# a picker reading it never catches it half-written.
+write_job() {
+    [[ -n $JOB ]] || return 0
+    local line
+    printf -v line '%s' \
+        "status=$J_status$SEP" "url=$J_url$SEP" "title=$J_title$SEP" \
+        "percent=$J_percent$SEP" "speed=$J_speed$SEP" "eta=$J_eta$SEP" \
+        "index=$J_index$SEP" "total=$J_total$SEP" "phase=$J_phase$SEP" \
+        "error=$J_error$SEP" "pgid=$PGID"
+    # The newline matters: the picker reads every job at once with a single
+    # `cat jobs/*`, and without it two jobs run together into one record.
+    printf '%s\n' "$line" > "$JOB.tmp" && mv -f "$JOB.tmp" "$JOB"
+}
+
+field() { tr "$SEP" '\n' < "$1" 2>/dev/null | sed -n "s/^$2=//p" | head -1; }
+
+trim() { local v=${1##+([[:space:]])}; printf '%s' "${v%%+([[:space:]])}"; }
+
+# A job whose process group is gone was killed or crashed without cleaning up.
+# Anything still holding a live group is somebody else's job, and is left be.
+reap() {
+    local f pgid
+    for f in "$JOBS"/*; do
+        [[ -f $f ]] || continue
+        pgid=$(field "$f" pgid)
+        [[ -n $pgid ]] || { rm -f "$f"; continue; }
+        kill -0 "-$pgid" 2>/dev/null || rm -f "$f"
+    done
+}
+
+notify() {
+    command -v notify-send >/dev/null 2>&1 || return 0
+    notify-send -a vids -i "${3:-video-x-generic}" ${4:+-u "$4"} "$1" "$2"
+}
+
+# ── cancel ──────────────────────────────────────────────────────────────────
+# Every job, running and queued. One keypress meaning "stop" that left four
+# more downloads to start would not be saying what it says.
+if [[ ${1:-} == cancel ]]; then
+    # Killing the running job frees the lock, which promotes a queued one —
+    # possibly behind the sweep that is trying to cancel it. So sweep until
+    # there is nothing left to sweep, and signal before unlinking so a dying
+    # job cannot write its file back out from under us.
+    for _ in 1 2 3 4 5; do
+        left=0
+        for f in "$JOBS"/*; do
+            [[ -f $f ]] || continue
+            left=1
+            pgid=$(field "$f" pgid)
+            [[ -n $pgid ]] && kill -TERM "-$pgid" 2>/dev/null
+            rm -f "$f"
+        done
+        (( left )) || break
+        sleep 0.2
+    done
+    exit 0
+fi
+
+# Failed jobs are kept so the picker can show them; this is how they go away.
+# Deliberately not part of `cancel` — dismissing an error must never be able
+# to stop a download that is still running.
+if [[ ${1:-} == clear ]]; then
+    for f in "$JOBS"/*; do
+        [[ -f $f ]] || continue
+        [[ $(field "$f" status) == failed ]] && rm -f "$f"
+    done
+    exit 0
+fi
+
+[[ ${1:-} == add ]] || { echo "usage: vids-dl add|cancel|clear ..." >&2; exit 2; }
+shift
+[[ $# -ge 1 ]] || { echo "vids-dl: no url" >&2; exit 2; }
+
+URL=$1; shift
+JOB="$JOBS/$PGID"
+J_url=$URL
+
+trap 'rm -f "$JOB.tmp" "$JOB.err"' EXIT
+
+reap
+write_job
+
+# ── queue ───────────────────────────────────────────────────────────────────
+# One download at a time, across every picker that has ever run. The lock is
+# held for the length of the job, so a second vids-dl waits its turn and sits
+# in the list as `queued` while it does.
+exec 9>"$LOCK" || exit 1
+flock 9
+
+J_status=running
+J_phase="resolving…"
+write_job
+
+# ── run ─────────────────────────────────────────────────────────────────────
+# Process substitution rather than a pipe: a pipe would put this loop in a
+# subshell, and the title it learns would be gone by the time the notification
+# needs it. The exit status comes back as one last line in the same stream.
+rc=1
+while IFS= read -r line; do
+    case $line in
+    "$MARK"X*)
+        rc=${line#"$MARK"X}
+        continue
+        ;;
+    "$MARK"D*)
+        old=$IFS; IFS=$SEP
+        set -f; set -- $line; set +f
+        IFS=$old
+
+        # yt-dlp right-pads its _str fields to a fixed width.
+        J_percent=${2//[ %]/}
+        J_speed=$(trim "${3:-}")
+        J_eta=$(trim "${4:-}")
+        J_title=$(trim "${5:-}")
+        J_index=$(trim "${6:-}")
+        J_total=$(trim "${7:-}")
+        J_phase=""
+
+        [[ $J_speed == *Unknown* || $J_speed == NA ]] && J_speed=""
+        [[ $J_eta == *Unknown* || $J_eta == NA ]] && J_eta=""
+        [[ $J_index == NA ]] && J_index=""
+        [[ $J_total == NA ]] && J_total=""
+        ;;
+    "["*"]"*)
+        # "[Merger] Merging formats ..." — a stage, though the tag is an
+        # extractor name as often as it is one, so only the stages are named
+        # and everything else is the same "still working on it" that an
+        # extractor name actually means.
+        tag=${line%%]*}; tag=${tag#[}
+        case $tag in
+        Merger)         J_phase="merging…" ;;
+        ExtractAudio|VideoConvertor) J_phase="converting…" ;;
+        Metadata)       J_phase="tagging…" ;;
+        download)       J_phase="starting…" ;;
+        *)              J_phase="resolving…" ;;
+        esac
+        # A new stage means the old percentage is about somebody else's
+        # stream. Better no number than the last stream's number.
+        J_percent=""; J_speed=""; J_eta=""
+        ;;
+    *)
+        continue
+        ;;
+    esac
+    write_job
+done < <(yt-dlp \
+    --newline --no-colors --progress \
+    --progress-template \
+"download:${MARK}D${SEP}%(progress._percent_str)s${SEP}%(progress._speed_str)s${SEP}%(progress._eta_str)s${SEP}%(info.title)s${SEP}%(info.playlist_index)s${SEP}%(info.n_entries)s" \
+    "$@" -- "$URL" 2>"$JOB.err"
+    printf '%sX%s\n' "$MARK" "$?")
+
+label=${J_title:-$URL}
+
+if [[ $rc -eq 0 ]]; then
+    if [[ -n $J_total && $J_total -gt 1 ]]; then
+        notify "Playlist downloaded" "$label — $J_total videos"
+    else
+        notify "Download finished" "$label"
+    fi
+    rm -f "$JOB"
+    exit 0
+fi
+
+# Kept rather than removed: a failure the picker can still show you is worth
+# more than a tidy directory.
+J_error=$(grep -m1 '^ERROR' "$JOB.err" 2>/dev/null | cut -c1-200)
+[[ -n $J_error ]] || J_error="yt-dlp exited $rc"
+J_status=failed
+J_phase=""
+write_job
+
+notify "Download failed" "$label" dialog-error critical
+exit "$rc"

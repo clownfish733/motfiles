@@ -1,0 +1,91 @@
+/* gtklock, dressed as the tuigreet box: black ground, raised bevel,
+ * magenta outline. Same palette as system/greetd/tuigreet.toml:
+ *   ground #000000   outline #993954   lit #c74e6f   shaded #57444a
+ *   accent #d44a6e   fg      #e6dde0   fgDim #8b7076
+ * Widget ids are from gtklock's res/gtklock.ui. */
+
+* {
+    font-family: "Hack Nerd Font", "Fira Code", monospace;
+    color: #e6dde0;
+    text-shadow: none;
+    box-shadow: none;
+}
+
+/* -b sets the image stretched to 100% 100%; crop instead. */
+window {
+    background-color: #000000;
+    background-size: cover;
+    background-position: center;
+    background-repeat: no-repeat;
+}
+
+/* The box. Raised bevel: lit top/left, shaded bottom/right, outline around. */
+#window-box {
+    background-color: rgba(0, 0, 0, 0.88);
+    border-style: solid;
+    border-width: 2px;
+    border-color: #c74e6f #57444a #57444a #c74e6f;
+    padding: 28px 36px 24px;
+    box-shadow: 0 0 0 1px #993954, 0 12px 40px rgba(0, 0, 0, 0.6);
+}
+
+#clock-label {
+    font-size: 64px;
+    font-weight: bold;
+    color: #d44a6e;
+}
+
+#date-label {
+    font-size: 14px;
+    color: #8b7076;
+    margin-bottom: 14px;
+}
+
+#input-label {
+    color: #8b7076;
+    margin-right: 6px;
+}
+
+#input-field {
+    background-color: #000000;
+    background-image: none;
+    color: #e6dde0;
+    caret-color: #d44a6e;
+    border: 1px solid #57444a;
+    border-radius: 0;
+    padding: 6px 10px;
+    min-height: 0;
+}
+
+#input-field:focus {
+    border-color: #d44a6e;
+}
+
+#input-field image {
+    color: #8b7076;
+}
+
+/* Enter unlocks; keep the button but make it a quiet text key. */
+#unlock-button {
+    background: none;
+    border: none;
+    border-radius: 0;
+    padding: 2px 6px;
+    color: #8b7076;
+}
+
+#unlock-button label {
+    color: #8b7076;
+}
+
+#unlock-button:hover label {
+    color: #d44a6e;
+}
+
+#error-label {
+    color: #d44a6e;
+}
+
+#warning-label {
+    color: #c74e6f;
+}

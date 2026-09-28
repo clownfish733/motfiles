@@ -1,0 +1,57 @@
+/* Toolbars at the bottom of the window.
+ *
+ * Needs toolkit.legacyUserProfileCustomizations.stylesheets=true (set in
+ * user.js, next to this file) and a full restart -- Firefox parses this once
+ * at startup, so a new window is not enough.
+ *
+ * Checked against Firefox 155. The chrome DOM is not a stable API. If an
+ * update breaks this, read the real markup instead of guessing:
+ *
+ *     unzip -o /usr/lib/firefox/browser/omni.ja \
+ *         'chrome/browser/content/browser/browser.xhtml' \
+ *         'chrome/browser/skin/classic/browser/*.css' -d /tmp/ffx
+ */
+
+/* browser-shared.css gives <body> `display: flex; flex-direction: column`,
+ * and #navigator-toolbox (tab strip + nav bar + bookmarks) and #browser (the
+ * content area and sidebars) are its only two in-flow children. One `order`
+ * swaps them; everything inside the toolbox keeps its normal arrangement, so
+ * tabs stay above the address bar and the address bar ends up on the window
+ * edge.
+ *
+ * Excluded in DOM fullscreen, where content-area.css collapses the toolbox
+ * anyway and the reorder just costs a reflow. */
+:root:not([inDOMFullscreen]) #navigator-toolbox {
+  order: 1;
+}
+
+/* content-area.css draws the chrome/content separator along the bottom of the
+ * toolbox. Flip it to the top so the line still lands between chrome and
+ * content. */
+#navigator-toolbox {
+  border-bottom: none !important;
+  border-top: 0.01px solid var(--chrome-content-separator-color) !important;
+}
+
+/* The address bar results. UrlbarInput.mjs pins #urlbar's `top` to the input's
+ * own position and lets .urlbarView flow underneath it, which off the bottom
+ * of the screen means the results are unreachable. Taking the view out of flow
+ * and anchoring it to the top edge of the input flips it upwards; #urlbar then
+ * collapses back to --urlbar-height, so `bottom: 100%` lands just above the
+ * input. */
+.urlbar[breakout][breakout-extend] > .urlbarView {
+  position: absolute !important;
+  inset-inline: 0 !important;
+  bottom: 100% !important;
+  margin-bottom: var(--space-xsmall) !important;
+
+  /* .urlbar-background is `inset: 0` inside .urlbar, and .urlbar has just
+   * collapsed to the height of the input, so the results no longer sit on top
+   * of it. Give them the same surface directly or they render transparent over
+   * the page. */
+  background-color: var(--urlbar-background-color-focus, var(--toolbar-field-focus-background-color)) !important;
+  border: 1px solid var(--panel-border-color) !important;
+  border-radius: var(--urlbar-background-border-radius) !important;
+  box-shadow: var(--urlbar-background-box-shadow-breakout) !important;
+  overflow: clip !important;
+}

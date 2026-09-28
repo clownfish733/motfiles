@@ -1,0 +1,61 @@
+#!/usr/bin/env bash
+# vids-probe — one poster frame and one duration per video, cached.
+#
+#   vids-probe CACHE WIDTH FILE...
+#
+# Emits `path <US> duration <US> thumbnail <RS>` per file, and does the work
+# only when the cache is cold. The cache key folds in mtime and size, so a
+# file that is replaced gets a new key and a new frame rather than a stale one
+# under the old name — which is what happens to a download that was resumed.
+#
+# Called with only the rows the picker can actually see, so an ffmpeg per file
+# stays a dozen of them and never the whole library.
+
+set -uo pipefail
+
+CACHE=${1:?cache dir}; shift
+WIDTH=${1:?width}; shift
+mkdir -p "$CACHE" || exit 1
+
+SEP=$'\037'
+REC=$'\036'
+
+for f in "$@"; do
+    [[ -f $f ]] || continue
+
+    meta=$(stat -c '%Y %s' -- "$f" 2>/dev/null) || continue
+    # WIDTH is in the key so that changing the thumbnail size regenerates
+    # rather than silently reusing frames made at the old one.
+    key=$(printf '%s\n%s\n%s' "$f" "$meta" "$WIDTH" | sha1sum | cut -c1-40)
+
+    jpg="$CACHE/$key.jpg"
+    dur="$CACHE/$key.dur"
+
+    if [[ ! -f $dur ]]; then
+        d=$(ffprobe -v error -show_entries format=duration \
+                    -of default=nk=1:nw=1 -- "$f" 2>/dev/null)
+        [[ $d == N/A ]] && d=""
+        printf '%s' "${d:-0}" > "$dur"
+    fi
+    d=$(< "$dur")
+
+    # A fifth of the way in: past the black frames and the title card, and
+    # still somewhere the file is likely to be intact on a part-download.
+    if [[ ! -f $jpg && ! -f $jpg.fail ]]; then
+        ss=$(awk -v d="$d" 'BEGIN {
+            t = d * 0.2
+            if (t < 1) t = 1
+            if (d > 1 && t > d - 0.5) t = d * 0.5
+            printf "%.2f", t
+        }')
+        if ! ffmpeg -nostdin -v error -ss "$ss" -i "$f" -frames:v 1 \
+                    -vf "scale=$WIDTH:-2" -q:v 5 -y -- "$jpg" 2>/dev/null; then
+            # Remember the failure, or every rescan pays for it again.
+            rm -f "$jpg"
+            : > "$jpg.fail"
+        fi
+    fi
+
+    [[ -f $jpg ]] || jpg=""
+    printf '%s%s%s%s%s%s' "$f" "$SEP" "$d" "$SEP" "$jpg" "$REC"
+done

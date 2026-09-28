@@ -1,0 +1,83 @@
+#!/usr/bin/env bash
+# find-file in the tofi minibuffer, ido-style (stands in for Emacs C-x C-f).
+#
+# Enter on a folder goes into it, `..` goes up. Enter on a text file opens it
+# in nvim, anything else goes to xdg-open. Dotfiles come after the rest, like
+# dired-omit but still reachable. Typing something that matches nothing jumps
+# there if it is a folder (`/etc`, `~/Downloads`), otherwise it is taken as a
+# new file in the current folder. The commands at the end open a terminal or
+# run a command in the current folder.
+#
+#   find-file [dir]    start in dir instead of ~
+
+term=foot
+
+menu() { tofi --prompt-text "$1" --require-match=false --fuzzy-match=false; }
+say()  { printf 'ok\n' | tofi --prompt-text "find-file: $1  " >/dev/null; }
+short() { [[ $1 == "$HOME"* ]] && printf '~%s' "${1#"$HOME"}" || printf '%s' "$1"; }
+
+edit() {  # edit <dir> <file>
+    exec $term --working-directory="$1" nvim -- "$2"
+}
+
+open() {  # open <dir> <file>
+    local mime
+    mime=$(file -b --mime-type -- "$2")
+    case $mime in
+        text/*|inode/x-empty|application/json|application/x-shellscript|application/javascript|application/xml|application/toml)
+            edit "$1" "$2" ;;
+        *)
+            setsid -f xdg-open "$2" >/dev/null 2>&1; exit ;;
+    esac
+}
+
+dir=$(realpath -- "${1:-$HOME}")
+shopt -s nullglob
+
+while :; do
+    [[ -r $dir && -x $dir ]] || { say "can't read $(short "$dir")"; dir=$(dirname -- "$dir"); continue; }
+
+    dirs=() files=() hidden=()
+    for p in "$dir"/*; do
+        n=${p##*/}
+        [[ -d $p ]] && dirs+=("$n/") || files+=("$n")
+    done
+    for p in "$dir"/.[!.]* "$dir"/..?*; do
+        n=${p##*/}
+        [[ -d $p ]] && hidden+=("$n/") || hidden+=("$n")
+    done
+
+    cmds=('[terminal here]' '[run command here]' '[new file]')
+    command -v yazi >/dev/null && cmds+=('[yazi here]')
+
+    up=(); [[ $dir != / ]] && up=(..)
+    here=$(short "$dir"); [[ $here == */ ]] || here+=/
+
+    choice=$(printf '%s\n' "${up[@]}" "${dirs[@]}" "${files[@]}" "${hidden[@]}" "${cmds[@]}" \
+             | menu "find-file $here ") || exit
+    [[ -z $choice ]] && exit
+
+    case $choice in
+        '[terminal here]')     exec $term --working-directory="$dir" ;;
+        '[yazi here]')         exec $term --working-directory="$dir" yazi ;;
+        '[run command here]')  exec ~/.config/sway/scripts/run-cmd "$dir" ;;
+        '[new file]')
+            name=$(tofi --prompt-text "new file in $here " --require-match=false </dev/null) || exit
+            [[ -n $name ]] && edit "$dir" "$name"
+            exit ;;
+        ..) dir=$(dirname -- "$dir"); continue ;;
+    esac
+
+    # Typed rather than picked: a path to jump to, or a new file.
+    path=$choice
+    [[ $path == '~'* ]] && path=$HOME${path#\~}
+    [[ $path == /* ]] || path=$dir/$path
+
+    if [[ -d $path ]]; then
+        dir=$(realpath -- "$path")
+    elif [[ -e $path ]]; then
+        open "$dir" "$path"
+    else
+        edit "$dir" "$path"
+    fi
+done

@@ -1,0 +1,94 @@
+#!/usr/bin/env bash
+# Bluetooth menu in the tofi minibuffer (stands in for quicky's bluetooth menu).
+#
+# Enter on a device connects it, or disconnects it if it already is; a device
+# that isn't paired yet gets paired and trusted first. Everything else is a
+# command at the end of the list: scan, forget, power off, and a bluetoothctl
+# shell for pairing that needs a PIN.
+
+term=foot
+bt() { timeout 20 bluetoothctl "$@" </dev/null; }
+
+menu() { tofi --prompt-text "$1" --require-match=true; }
+say()  { printf 'ok\n' | tofi --prompt-text "bt: $1  " >/dev/null; }
+bar()  { pkill -USR1 -f 'bash .*sway/scripts/status$'; }
+
+# bluetoothctl just hangs waiting for the daemon when it isn't running.
+if ! systemctl is-active -q bluetooth; then
+    say 'bluetooth.service is not running (sudo systemctl enable --now bluetooth)'
+    exit
+fi
+
+# The bar reads rfkill, so power goes through rfkill too.
+if rfkill -n -o HARD list bluetooth | grep -qx ' *blocked'; then
+    say 'blocked by the hardware switch'; exit
+fi
+if rfkill -n -o SOFT list bluetooth | grep -qx ' *blocked' || ! bt show | grep -q 'Powered: yes'; then
+    [[ $(printf 'power on\n' | menu 'bt (off): ') == 'power on' ]] || exit
+    rfkill unblock bluetooth
+    for _ in 1 2 3 4 5; do bt power on >/dev/null && break; sleep 0.5; done
+    bar
+    exit
+fi
+
+# "Device AA:BB:CC:DD:EE:FF Name" -> address set
+addrs() { bt devices "$@" | while read -r _ a _; do printf '%s\n' "$a"; done; }
+
+while :; do
+    declare -A paired=() connected=() addr_of=()
+    for a in $(addrs Paired); do paired[$a]=1; done
+    for a in $(addrs Connected); do connected[$a]=1; done
+
+    lines=() rest=()
+    while read -r _ a name; do
+        [[ $a == *:*:*:*:*:* ]] || continue
+        # Unnamed devices show up under their address with dashes; skip them.
+        [[ $name == "${a//:/-}" ]] && continue
+        tag=
+        if [[ -n ${connected[$a]} ]]; then tag=' (connected)'
+        elif [[ -n ${paired[$a]} ]]; then tag=' (paired)'
+        fi
+        entry="$name$tag"
+        [[ -n ${addr_of[$entry]} ]] && entry+=" ${a: -5}"
+        addr_of[$entry]=$a
+        if [[ -n ${connected[$a]} ]]; then lines=("$entry" "${lines[@]}")
+        elif [[ -n ${paired[$a]} ]]; then lines+=("$entry")
+        else rest+=("$entry")
+        fi
+    done < <(bt devices)
+
+    cmds=(scan)
+    (( ${#paired[@]} )) && cmds+=(forget)
+    cmds+=('power off' bluetoothctl)
+
+    choice=$(printf '%s\n' "${lines[@]}" "${rest[@]}" "${cmds[@]}" | menu 'bt: ') || exit
+    case $choice in
+        scan)
+            # Nothing to draw while it runs; the menu comes back with the results.
+            timeout 10 bluetoothctl --timeout 8 scan on >/dev/null 2>&1 </dev/null
+            continue ;;
+        'power off')    bt power off >/dev/null; rfkill block bluetooth; bar; exit ;;
+        bluetoothctl)   exec $term --app-id=floating-menu bluetoothctl ;;
+        forget)
+            declare -A forget_of=()
+            for e in "${!addr_of[@]}"; do
+                [[ -n ${paired[${addr_of[$e]}]} ]] && forget_of[$e]=${addr_of[$e]}
+            done
+            e=$(printf '%s\n' "${!forget_of[@]}" | sort | menu 'forget: ') || exit
+            out=$(bt remove "${forget_of[$e]}" 2>&1) || say "${out##*$'\n'}"
+            exit ;;
+    esac
+
+    a=${addr_of[$choice]}
+    [[ -z $a ]] && exit
+    if [[ -n ${connected[$a]} ]]; then
+        out=$(bt disconnect "$a" 2>&1) || say "${out##*$'\n'}"
+        exit
+    fi
+    if [[ -z ${paired[$a]} ]]; then
+        out=$(bt pair "$a" 2>&1) || { say "pairing failed, try the bluetoothctl shell"; exit; }
+        bt trust "$a" >/dev/null
+    fi
+    out=$(bt connect "$a" 2>&1) || say "${out##*$'\n'}"
+    exit
+done

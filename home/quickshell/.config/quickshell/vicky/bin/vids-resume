@@ -1,0 +1,36 @@
+#!/usr/bin/env bash
+# vids-resume — where mpv left off, per file.
+#
+#   vids-resume [WATCH_LATER_DIR]
+#
+# Emits `path <US> seconds <RS>` for every file mpv has a saved position for.
+#
+# mpv names these files by a hash of the path, but it also writes the path
+# itself into the file when --write-filename-in-watch-later-config is on —
+# which Player.qml always passes — so there is no need to reimplement mpv's
+# hashing, and entries written by some other mpv without the flag are simply
+# skipped rather than guessed at.
+#
+# mpv drops a `# redirect entry` alongside the real ones for every parent
+# directory of a played file. Those carry no position and must not be read as
+# if they did.
+
+set -uo pipefail
+
+dir=${1:-${XDG_STATE_HOME:-$HOME/.local/state}/mpv/watch_later}
+[[ -d $dir ]] || exit 0
+
+shopt -s nullglob
+files=("$dir"/*)
+(( ${#files[@]} )) || exit 0
+
+awk -v SEP=$'\037' -v REC=$'\036' '
+    FNR == 1 {
+        path = ""
+        if ($0 ~ /^# redirect entry/) nextfile
+        if (substr($0, 1, 2) == "# ") path = substr($0, 3)
+    }
+    /^start=/ {
+        if (path != "") printf "%s%s%s%s", path, SEP, substr($0, 7), REC
+    }
+' "${files[@]}" 2>/dev/null

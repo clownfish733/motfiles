@@ -1,0 +1,41 @@
+# mako, in the quicky palette: black, outlined in #993954, flat like the bar
+# and the tofi minibuffer. Toasts hang off the top edge, away from the bar.
+
+font=Hack Nerd Font 10
+background-color=#000000
+text-color=#e6dde0
+border-color=#993954
+progress-color=over #2b1018
+border-size=1
+border-radius=0
+padding=8,10
+margin=8
+width=360
+height=120
+anchor=top-center
+format=<b>%s</b>  <span color="#8b7076">%a</span>\n%b
+
+max-visible=3
+default-timeout=6000
+max-history=50
+group-by=app-name,summary
+
+[urgency=low]
+border-color=#57444a
+default-timeout=3000
+
+[urgency=critical]
+border-color=#d2536a
+default-timeout=0
+
+# Grouped notifications show how many they stand for.
+[grouped]
+format=<b>%s</b>  <span color="#8b7076">%a ×%g</span>\n%b
+
+# Do not disturb (notif-menu toggles it): everything still lands in history,
+# only critical ones get through to the screen.
+[mode=do-not-disturb]
+invisible=1
+
+[mode=do-not-disturb urgency=critical]
+invisible=0

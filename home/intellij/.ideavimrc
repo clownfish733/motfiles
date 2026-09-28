@@ -1,0 +1,132 @@
+" ~/.ideavimrc
+" Mirrors ~/.config/nvim/init.lua as closely as IdeaVim allows.
+" Leader is space, same as the nvim config.
+
+" ============================================================================
+" Leader
+" ============================================================================
+let mapleader = " "
+let maplocalleader = " "
+
+" ============================================================================
+" Options (matches the `opt.*` block in init.lua)
+" ============================================================================
+set number relativenumber
+set ignorecase smartcase
+set incsearch hlsearch
+set scrolloff=8
+set clipboard+=unnamed        " nvim: clipboard=unnamedplus
+set showmode                  " IdeaVim's mode indicator lives in the status bar either way
+set cursorline
+set timeoutlen=400
+
+" IntelliJ owns indentation per-language via Editor > Code Style, but these
+" keep the Vim-side behavior consistent with the nvim config:
+set expandtab
+set shiftwidth=4
+set tabstop=4
+
+" ============================================================================
+" IdeaVim extensions -- closest thing to nvim-surround/Comment.nvim/etc,
+" none of which are in your nvim config directly, but these are the standard
+" vim-muscle-memory ops (ys/cs/ds, gcc, easymotion) worth having anyway.
+" Comment out any you don't want.
+" ============================================================================
+set surround
+set commentary
+set multiple-cursors
+set easymotion
+set NERDTree
+set which-key
+
+" ============================================================================
+" Keymaps -- direct ports from init.lua's `map(...)` calls
+" ============================================================================
+
+" Clear search highlight (nvim: <Esc> -> :nohlsearch)
+nnoremap <Esc> :nohlsearch<CR>
+
+" Save / quit
+nnoremap <leader>w :write<CR>
+nnoremap <leader>q :quit<CR>
+
+" Window navigation (works the same in IdeaVim as in nvim -- <C-w>h/j/k/l)
+nnoremap <C-h> <C-w>h
+nnoremap <C-j> <C-w>j
+nnoremap <C-k> <C-w>k
+nnoremap <C-l> <C-w>l
+
+" Move selected lines up/down, re-indenting
+vnoremap J :m '>+1<CR>gv=gv
+vnoremap K :m '<-2<CR>gv=gv
+
+" Keep cursor centered on jumps / search
+nnoremap <C-d> <C-d>zz
+nnoremap <C-u> <C-u>zz
+nnoremap n nzzzv
+nnoremap N Nzzzv
+
+" Paste over a selection without clobbering the yank register
+xnoremap <leader>p "_dP
+
+" ============================================================================
+" LSP-equivalent keymaps -- init.lua wires these on LspAttach; IntelliJ's
+" code intelligence is native and always attached, so these just map
+" straight to IDE actions.
+" ============================================================================
+nnoremap gd <Action>(GotoDeclaration)
+nnoremap gD <Action>(GotoTypeDeclaration)
+nnoremap gr <Action>(ShowUsages)
+nnoremap gi <Action>(GotoImplementation)
+nnoremap K <Action>(QuickJavaDoc)
+nnoremap <leader>rn <Action>(RenameElement)
+nnoremap <leader>ca <Action>(ShowIntentionActions)
+nnoremap <leader>d <Action>(ShowErrorDescription)
+nnoremap [d <Action>(GotoPreviousError)
+nnoremap ]d <Action>(GotoNextError)
+
+" nvim: <leader>ih toggles inlay hints. No single reliable action ID across
+" IntelliJ versions/languages -- toggle it from Settings > Editor > Inlay
+" Hints, or bind it yourself once you find the action id via
+" Help > Find Action (search "inlay").
+
+" ============================================================================
+" Telescope-equivalent keymaps
+" ============================================================================
+nnoremap <leader>ff <Action>(SearchEverywhere)
+nnoremap <leader>fg <Action>(FindInPath)
+nnoremap <leader>fb <Action>(RecentFiles)
+nnoremap <leader>fd <Action>(ActivateProblemsViewToolWindow)
+nnoremap <leader>fs <Action>(FileStructurePopup)
+
+" ============================================================================
+" oil.nvim `-` -> open parent dir. Closest IntelliJ analog: reveal the
+" current file in the project tree.
+" ============================================================================
+nnoremap - <Action>(SelectInProjectView)
+
+" ============================================================================
+" gitsigns.nvim equivalents (IntelliJ shows change markers in the gutter
+" natively; these give you hunk navigation/revert without leaving the keyboard)
+" ============================================================================
+nnoremap ]h <Action>(VcsShowNextChangeMarker)
+nnoremap [h <Action>(VcsShowPrevChangeMarker)
+nnoremap <leader>hr <Action>(Vcs.RollbackChangedLines)
+nnoremap <leader>hp <Action>(Compare.LastVersion)
+
+" ============================================================================
+" conform.nvim <leader>cf -> format buffer
+" ============================================================================
+nnoremap <leader>cf <Action>(ReformatCode)
+
+" ============================================================================
+" zen-mode.nvim <leader>z -> distraction-free mode
+" ============================================================================
+nnoremap <leader>z <Action>(ToggleDistractionFreeMode)
+
+" ============================================================================
+" Vim emulation behavior tweaks
+" ============================================================================
+set ideajoin              " J joins using IDE-aware smart join (comments, etc.)
+set ideamarks             " marks shown in the gutter like IDE bookmarks
+set idearefactormode=keep " don't force insert mode when refactoring/renaming

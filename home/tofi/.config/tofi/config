@@ -1,0 +1,43 @@
+# ~/.config/tofi/config
+#
+# The old centered card, flattened into a minibuffer: one line, laid over the
+# bottom bar, in the quicky palette (black, outlined in #993954).
+
+# geometry — same height as the bar, which it covers while open
+anchor = bottom
+width = 100%
+height = 24
+horizontal = true
+exclusive-zone = -1
+corner-radius = 0
+border-width = 1
+border-color = #993954
+outline-width = 0
+background-color = #000000
+
+padding-top = 2
+padding-bottom = 0
+padding-left = 8
+padding-right = 8
+clip-to-padding = false
+
+# text
+font = Hack Nerd Font
+font-size = 10
+text-color = #8b7076
+prompt-text = "run: "
+prompt-color = #993954
+placeholder-text = ""
+input-color = #e6dde0
+
+# results
+num-results = 0
+result-spacing = 16
+selection-color = #e6dde0
+selection-background = #2b1018
+selection-background-padding = 0, 4
+selection-background-corner-radius = 0
+
+fuzzy-match = true
+drun-launch = true
+hide-cursor = false

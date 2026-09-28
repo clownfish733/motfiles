@@ -1,0 +1,12 @@
+# Installed by firefox-profile-setup into every profile in profiles.txt.
+# <add-on id> <addons.mozilla.org slug>; the id is the .xpi's filename in
+# <profile>/extensions/, so it has to match the add-on's real id.
+{ebc30aa1-fc02-473e-8e4c-9d32771a5070} black-theme
+uBlock0@raymondhill.net ublock-origin
+{74145f27-f039-47ce-a470-a662b129930a} clearurls
+enhancerforyoutube@maximerf.addons.mozilla.org enhancer-for-youtube
+jid1-MnnxcxisBPnSXQ@jetpack privacy-badger17
+sponsorBlocker@ajay.app sponsorblock
+{732216ec-0dab-43bb-ac85-4b5e1977599d} surfshark-vpn-proxy
+addon@darkreader.org darkreader
+{e58d3966-3d76-4cd9-8552-1582fbc800c1} buster-captcha-solver

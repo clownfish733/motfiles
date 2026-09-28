@@ -1,0 +1,65 @@
+/* Black blank tab.
+ *
+ * Content-side counterpart to userChrome.css, switched on by the same pref
+ * (toolkit.legacyUserProfileCustomizations.stylesheets, set in user.js) and
+ * with the same caveat: parsed once at startup, so restart Firefox fully.
+ *
+ * With browser.newtabpage.enabled=false a new tab is not about:newtab, it is
+ * chrome://browser/content/blanktab.html -- a document with nothing in it but
+ * <meta name="color-scheme" content="light dark"> and no background of its
+ * own. So what fills the window is the canvas colour Gecko picks for a dark
+ * document, #1c1b22, which is neither a theme token nor a pref: setting
+ * browser.display.background_color.dark does not touch it, because that only
+ * applies when document colours are overridden wholesale.
+ *
+ * Giving the root element a background is what actually changes it. The rule
+ * has to live here rather than in userChrome.css -- blanktab.html loads in the
+ * tab, so it takes the content sheet, chrome: URI notwithstanding. Checked by
+ * rendering the page under each sheet:
+ *
+ *     firefox --headless --window-size=600,400 --screenshot=out.png \
+ *         --profile <tmp> chrome://browser/content/blanktab.html
+ *
+ * no sheet #1c1b22, rule in userChrome.css #1c1b22, rule here #000000. */
+@-moz-document url("chrome://browser/content/blanktab.html") {
+  html {
+    background-color: #000 !important;
+  }
+}
+
+/* Google results, black.
+ *
+ * Google's dark theme paints the page #202124 and then repaints most of its
+ * containers with greys of their own, under obfuscated class names (.e8Zw5d,
+ * .T1diZc) that get renamed every few months. So this paints the page itself
+ * and makes the structural ids transparent to let it through, rather than
+ * restating a colour per container: those ids have been stable for years, and
+ * one that does stop matching costs nothing, where a missed container would
+ * leave a grey slab behind.
+ *
+ * Not measured, unlike the rule above -- Google does not render under
+ * headless automation, so this was written from the structure rather than
+ * checked against a screenshot. Anything still grey is a container needing
+ * adding to the second list. */
+@-moz-document domain("google.com") {
+  html,
+  body {
+    background-color: #000 !important;
+  }
+
+  /* Header strip, results column, right-hand panel, footer. */
+  #gb,
+  #searchform,
+  #appbar,
+  #topabar,
+  #main,
+  #cnt,
+  #rcnt,
+  #center_col,
+  #rhs,
+  #botstuff,
+  #extrares,
+  #footcnt {
+    background-color: transparent !important;
+  }
+}

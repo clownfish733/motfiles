@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+# M-x in the tofi minibuffer (stands in for Emacs smex): every action by name,
+# so the ones without a key, or whose key is forgotten, are a few letters away.
+# Add a line to the table to add an action.
+
+s=~/.config/sway/scripts
+
+# Same browser as $mod+b: Firefox where the browsers package is stowed.
+browser=qutebrowser
+[[ -e ~/.config/sway/apps.d/browsers ]] && browser=firefox
+
+# name|command (run by sh)
+actions=(
+    "find file|$s/find-file"
+    "run command|$s/run-cmd"
+    "rerun last command|$s/run-cmd --again"
+    "terminal|foot"
+    "browser|$browser"
+    "qutebrowser|qutebrowser"
+    "apps|tofi-drun"
+    "wifi|$s/wifi-menu"
+    "bluetooth|$s/bt-menu"
+    "notifications|$s/notif-menu"
+    "power profile|$s/power-profile-menu"
+    "power|$s/power-menu"
+    "screenshot to clipboard|$s/screenshot"
+    "screenshot to file|$s/screenshot ~/Pictures/Screenshots"
+    "toggle laptop panel|$s/toggle-laptop-panel"
+    "lock|loginctl lock-session"
+    "reload sway|swaymsg reload"
+    "edit sway config|foot nvim ~/.config/sway/config"
+    "edit bar|foot nvim $s/status"
+)
+
+declare -A cmd_of=()
+names=()
+for a in "${actions[@]}"; do
+    cmd_of[${a%%|*}]=${a#*|}
+    names+=("${a%%|*}")
+done
+
+choice=$(printf '%s\n' "${names[@]}" | tofi --prompt-text 'M-x ' --require-match=true) || exit
+[[ -n ${cmd_of[$choice]} ]] && exec sh -c "${cmd_of[$choice]}"

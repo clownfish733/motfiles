@@ -1,0 +1,12 @@
+[package]
+name                   = "tuigreet-locales"
+description            = "Localizations for tuigreet"
+version.workspace      = true
+edition.workspace      = true
+license.workspace      = true
+rust-version.workspace = true
+
+[dependencies]
+i18n-embed    = { workspace = true }
+i18n-embed-fl = { workspace = true }
+rust-embed    = { workspace = true }

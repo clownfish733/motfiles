@@ -1,0 +1,21 @@
+[terminal]
+# The VT to run the greeter on. Can be "next", "current" or a number
+# designating the VT.
+vt = 1
+
+# The default session, also known as the greeter.
+[default_session]
+
+# A wrapper rather than tuigreet directly: the console palette has to be
+# loaded from inside the greeter process, because it is per-VT and only
+# survives on the console greetd actually opens. See greetd/greeter.
+#
+# If the greeter ever fails to start, `command = "tuigreet"` falls back to the
+# packaged greetd-tuigreet at /usr/bin/tuigreet, which stays installed.
+#command = "agreety --cmd /bin/sh"
+command = "/etc/greetd/greeter"
+
+# The user to run the command as. The privileges this user must have depends
+# on the greeter. A graphical greeter may for example require the user to be
+# in the `video` group.
+user = "greeter"

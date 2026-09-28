@@ -1,0 +1,4 @@
+# From the browsers package, so only on machines installed without -l:
+# Firefox on $mod+b, qutebrowser moves to $mod+Ctrl+b.
+set $browser firefox
+bindsym $mod+Ctrl+b exec qutebrowser

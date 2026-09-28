@@ -1,0 +1,20 @@
+#!/usr/bin/env bash
+# Region screenshot, hyprshot-style.
+#   screenshot            -> select region, copy to clipboard only
+#   screenshot <dir>      -> select region, save to <dir> and copy to clipboard
+set -euo pipefail
+
+geom=$(slurp -d) || exit 0 # Esc / cancelled selection
+
+if [[ $# -eq 0 ]]; then
+    grim -g "$geom" - | wl-copy --type image/png
+    msg="Copied to clipboard"
+else
+    mkdir -p "$1"
+    file="$1/$(date +%Y-%m-%d-%H%M%S)_screenshot.png"
+    grim -g "$geom" "$file"
+    wl-copy --type image/png < "$file"
+    msg="Saved to $file"
+fi
+
+command -v notify-send >/dev/null && notify-send -a screenshot "Screenshot" "$msg" || true
