@@ -25,6 +25,7 @@ greetd-tuigreet
 grim
 grub
 gtklock
+imagemagick
 libnotify
 linux
 linux-firmware
@@ -46,11 +47,13 @@ quickshell
 qutebrowser
 ripgrep
 rustup
+scrcpy
 slurp
 starship
 stow
 stylua
 sway
+swaybg
 swayidle
 swaylock
 terminus-font
@@ -58,6 +61,7 @@ texlive-basic
 texlive-binextra
 texlive-fontsrecommended
 texlive-latex
+texlive-latexextra
 texlive-latexrecommended
 tmux
 tree-sitter-cli

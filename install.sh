@@ -11,13 +11,14 @@ install_lang=true
 install_system=true
 install_browsers=true
 windows_entry=false
+zram=false
 pin_os_age=false
 os_age_epoch=""
 backup_dir="$HOME/.dotfiles-backup/$(date +%Y%m%d-%H%M%S)"
 
 usage() {
     cat <<'USAGE'
-Usage: install.sh [-n|--no-packages] [-L|--no-lang] [-S|--no-system] [-l|--low-spec] [-w|--windows] [-a|--os-age EPOCH] [-h|--help] [PACKAGE...]
+Usage: install.sh [-n|--no-packages] [-L|--no-lang] [-S|--no-system] [-l|--low-spec] [-w|--windows] [-z|--zram] [-a|--os-age EPOCH] [-h|--help] [PACKAGE...]
 
   -n, --no-packages   Skip pacman/yay installs, toolchains and first-run app setup
   -L, --no-lang       Skip rustup/ghcup/cabal toolchain setup
@@ -27,6 +28,8 @@ Usage: install.sh [-n|--no-packages] [-L|--no-lang] [-S|--no-system] [-l|--low-s
   -l, --low-spec      Skip the extra browsers (Firefox, its profiles and add-ons,
                       Waterfox); qutebrowser is still installed
   -w, --windows       Add the Windows chainload entry to grub (system/grub/29_windows)
+  -z, --zram          ASUS laptop only: zram-generator + zram swap and its sysctl
+                      tuning (system/zram). Leave off on every other machine
   -a, --os-age EPOCH  Pin the fastfetch "OS Age" counter to EPOCH (unix seconds)
                       from a previous install on THIS device. Off by default, so
                       other machines count from their own filesystem birth time
@@ -47,6 +50,7 @@ while [[ $# -gt 0 ]]; do
         -S|--no-system) install_system=false; shift ;;
         -l|--low-spec) install_browsers=false; shift ;;
         -w|--windows) windows_entry=true; shift ;;
+        -z|--zram) zram=true; shift ;;
         -a|--os-age) pin_os_age=true; os_age_epoch="${2-}"; shift; [[ $# -gt 0 ]] && shift ;;
         --os-age=*) pin_os_age=true; os_age_epoch="${1#*=}"; shift ;;
         -h|--help) usage; exit 0 ;;
@@ -105,6 +109,11 @@ if [[ "$install_pkgs" == true ]]; then
     if [[ "$install_browsers" == true ]]; then
         sudo pacman -S --needed --noconfirm firefox
         yay -S --needed --noconfirm waterfox-bin
+    fi
+
+    # ZRAM (ASUS laptop only)
+    if [[ "$zram" == true ]]; then
+        sudo pacman -S --needed --noconfirm zram-generator
     fi
 fi
 
@@ -239,6 +248,13 @@ sudo grub-mkconfig -o /boot/grub/grub.cfg
 sudo install -Dm644 system/systemd/99-no-reboot-watchdog.conf \
     /etc/systemd/system.conf.d/99-no-reboot-watchdog.conf
 sudo systemctl daemon-reexec
+
+# ZRAM (ASUS laptop only: half of RAM as zstd swap, preferred over the swap
+# partition, with sysctl tuning for it). Takes effect on the next boot.
+if [[ "$zram" == true ]]; then
+    sudo install -Dm644 system/zram/zram-generator.conf /etc/systemd/zram-generator.conf
+    sudo install -Dm644 system/zram/99-vm-zram.conf /etc/sysctl.d/99-vm-zram.conf
+fi
 
 # TUIGREET
 # The fork pins a nightly in rust-toolchain.toml; stable builds it fine.

@@ -69,8 +69,10 @@ bindgesture swipe:3:right workspace prev_on_output
 ### Style
 default_border pixel 2
 default_floating_border pixel 2
-gaps inner 2
-gaps outer 3
+#gaps inner 2
+#gaps outer 3
+gaps inner 6
+gaps outer 9
 
 # class                 border  bg      text    indicator child_border
 client.focused          #993954 #993954 #cdd6f4 #ae76a6   #993954
@@ -174,6 +176,9 @@ bindsym $mod+Ctrl+Shift+s exec ~/.config/sway/scripts/screenshot ~/Pictures/Scre
 # Toggle external-only / external + laptop.
 bindsym $mod+Shift+m exec ~/.config/sway/scripts/toggle-laptop-panel
 
+# Toggle the bar at the bottom.
+bindsym $mod+n bar mode toggle
+
 # Toggle the touchpad on/off.
 bindsym $mod+t input type:touchpad events toggle enabled disabled
 bindsym XF86TouchpadToggle input type:touchpad events toggle enabled disabled
@@ -201,6 +206,8 @@ bar {
     status_padding 0
     status_edge_padding 0
     workspace_min_width 24
+    # Don't reveal the bar while $mod is held when hidden with $mod+n.
+    modifier none
 
     colors {
         background #000000

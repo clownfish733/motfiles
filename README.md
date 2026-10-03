@@ -12,6 +12,7 @@ system/   things installed outside $HOME by install.sh (grub, greetd, tuigreet)
 ```sh
 ./install.sh                 # packages, toolchains, stow everything, then grub/greetd/tuigreet/shell
 ./install.sh -w              # same, plus the Windows grub entry (tower)
+./install.sh -z              # same, plus zram swap (ASUS laptop only)
 ./install.sh -L              # skip the rustup/ghcup/cabal toolchain setup
 ./install.sh -a 1752856201   # reinstall: keep fastfetch's "OS Age" counting from this epoch
 ./install.sh -l              # low-spec machine: no Firefox/Waterfox, browsers package not stowed
@@ -60,6 +61,10 @@ history, lazy.nvim data, …) stays out of the repo.
 - **grub** — `minimal` theme into `/boot/grub/themes`, `grub` to
   `/etc/default/grub` (the original is kept as `/etc/default/grub.orig`),
   `29_windows` only with `-w`.
+- **zram** — ASUS laptop only, with `-z`: installs `zram-generator`, puts
+  `zram-generator.conf` (half of RAM, zstd, swap priority 100) in
+  `/etc/systemd/` and `99-vm-zram.conf` (swappiness etc.) in `/etc/sysctl.d/`.
+  Don't use it on other machines.
 - **tuigreet** — vendored fork, built with cargo and installed to
   `/usr/local/bin/tuigreet`. The packaged `greetd-tuigreet` stays installed as
   a fallback.
